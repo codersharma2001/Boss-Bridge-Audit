@@ -21,9 +21,17 @@ contract TokenFactory is Ownable {
      * @param contractBytecode The bytecode of the new token
      */
     function deployToken(string memory symbol, bytes memory contractBytecode) public onlyOwner returns (address addr) {
+        // q are you sure you want this out of scope ? 
+        // maybe this is a gas efficient way to do it
         assembly {
+            // @audit : this wont work with zk sync !!
+            // test this on zksync
+            // X large 
+            // load the contract bytecdoe into memory 
+            // create a contract 
             addr := create(0, add(contractBytecode, 0x20), mload(contractBytecode))
-        }
+        } // gives the lower leve laccess to the EVM
+        // here we are creating a yul function that will create a new contract
         s_tokenToAddress[symbol] = addr;
         emit TokenDeployed(symbol, addr);
     }

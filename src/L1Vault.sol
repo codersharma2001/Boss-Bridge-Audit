@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.20;
 
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -15,8 +16,11 @@ contract L1Vault is Ownable {
     constructor(IERC20 _token) Ownable(msg.sender) {
         token = _token;
     }
+    
+    // q why not just hard code the approval to only the bridge ? 
 
     function approveTo(address target, uint256 amount) external onlyOwner {
+        // @audit-info : this should check the return value of the approve function 
         token.approve(target, amount);
     }
 }

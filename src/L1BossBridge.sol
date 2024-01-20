@@ -25,8 +25,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { L1Vault } from "./L1Vault.sol";
 
 contract L1BossBridge is Ownable, Pausable, ReentrancyGuard {
+    // @audit-info : should be immutable
     using SafeERC20 for IERC20;
 
+    // @audit-info : should be a constant
     uint256 public DEPOSIT_LIMIT = 100_000 ether;
 
     IERC20 public immutable token;
@@ -54,6 +56,8 @@ contract L1BossBridge is Ownable, Pausable, ReentrancyGuard {
         _unpause();
     }
 
+
+    // q hey what happen if we disable an account mid-flight ??
     function setSigner(address account, bool enabled) external onlyOwner {
         signers[account] = enabled;
     }
@@ -67,13 +71,21 @@ contract L1BossBridge is Ownable, Pausable, ReentrancyGuard {
      * @param l2Recipient The address of the user who will receive the tokens on L2
      * @param amount The amount of tokens to deposit
      */
+
+    // @audit IMPACT: HIGH , LIKELIHOOD : HIGH
+    // if the user approves the bridge , any other user can their funds 
+    
+    // @audit-high if the vault approved the bridge  .. can the user steal fund from the vault ? 
+    // why they are diff ? , one is happen from the user to the user , the other is from the user to the vault and having max approval as much as possible
     function depositTokensToL2(address from, address l2Recipient, uint256 amount) external whenNotPaused {
         if (token.balanceOf(address(vault)) + amount > DEPOSIT_LIMIT) {
             revert L1BossBridge__DepositLimitReached();
         }
         token.safeTransferFrom(from, address(vault), amount);
 
+        
         // Our off-chain service picks up this event and mints the corresponding tokens on L2
+        // @audit-info : should follow CEI , should ideally before the tranfer from 
         emit Deposit(from, l2Recipient, amount);
     }
 
@@ -117,7 +129,9 @@ contract L1BossBridge is Ownable, Pausable, ReentrancyGuard {
         }
 
         (address target, uint256 value, bytes memory data) = abi.decode(message, (address, uint256, bytes));
-
+          
+          // q slither said it is bad , we will come back to this
+          // data with crazy gas costs  
         (bool success,) = target.call{ value: value }(data);
         if (!success) {
             revert L1BossBridge__CallFailed();
